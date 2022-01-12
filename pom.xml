@@ -105,6 +105,14 @@
             <version>4.0.3</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>edu.rit.pj2</groupId>
+            <artifactId>pj2</artifactId>
+            <version>1.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/src/main/java/io/moquette/pj2_20190611.jar</systemPath>
+        </dependency>
     </dependencies>
 
     <reporting>

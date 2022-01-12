@@ -15,8 +15,10 @@
  */
 package io.moquette.broker;
 
-import io.moquette.broker.subscriptions.Topic;
+import edu.rit.util.Hex;
 import io.moquette.broker.security.IAuthenticator;
+import io.moquette.broker.subscriptions.Topic;
+import io.moquette.speck.Decrypt;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
 import io.netty.channel.Channel;
@@ -29,7 +31,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -37,8 +41,9 @@ import static io.netty.channel.ChannelFutureListener.CLOSE_ON_FAILURE;
 import static io.netty.channel.ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE;
 import static io.netty.handler.codec.mqtt.MqttConnectReturnCode.*;
 import static io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader.from;
-import static io.netty.handler.codec.mqtt.MqttQoS.*;
-import io.netty.util.ReferenceCountUtil;
+import static io.netty.handler.codec.mqtt.MqttQoS.AT_LEAST_ONCE;
+import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class MQTTConnection {
 
@@ -128,9 +133,22 @@ final class MQTTConnection {
 
     void processConnect(MqttConnectMessage msg) {
         MqttConnectPayload payload = msg.payload();
+        //  INSERT DECRYPTION
+//        if(args.length !=2){
+//            usage();
+//        }
+//        byte[] key = Hex.toByteArray(args[0]);
+//        byte[] plaintext = Hex.toByteArray(args[1]);
+//        Decrypt s= new Decrypt(key, plaintext);
+//        s.setKey(key);
+//        s.key_schedule1();
+//        s.decrypt(plaintext);
+//        System.out.println(Hex.toString(plaintext)); // this prints the plaintext output
+//
+        LOG.info("\n MESSAGE: " + payload);
         String clientId = payload.clientIdentifier();
         final String username = payload.userName();
-        LOG.trace("Processing CONNECT message. CId: {} username: {}", clientId, username);
+        LOG.trace("Processing CONNECT message. CId: {} username: {} \n TEST USERNAME", clientId, username);
 
         if (isNotProtocolVersion(msg, MqttVersion.MQTT_3_1) && isNotProtocolVersion(msg, MqttVersion.MQTT_3_1_1)) {
             LOG.warn("MQTT protocol version is not valid. CId: {}", clientId);
@@ -328,6 +346,7 @@ final class MQTTConnection {
             dropConnection();
             return;
         }
+        LOG.info("\n MESSAGE: " + msg.payload());
         postOffice.subscribeClientToTopics(msg, clientID, NettyUtils.userName(channel), this);
     }
 
@@ -360,6 +379,19 @@ final class MQTTConnection {
         final String topicName = msg.variableHeader().topicName();
         final String clientId = getClientId();
         final int messageID = msg.variableHeader().packetId();
+        final String decodedPayload = new String(msg.payload().array(), UTF_8);
+
+        LOG.info("\n MESSAGE: " + msg.payload());
+
+        byte[] key =  Hex.toByteArray("502e50ca60fa6c7c");
+        byte[] plaintext = Hex.toByteArray(decodedPayload);
+        Decrypt s= new Decrypt(key, plaintext);
+        s.setKey(key);
+        s.key_schedule1();
+        s.decrypt(plaintext);
+        System.out.println(Hex.toString(plaintext)); // this prints the plaintext output
+        LOG.info("\n MESSAGE DECRYPTED : " +  Arrays.toString(plaintext));
+
         LOG.trace("Processing PUBLISH message, topic: {}, messageId: {}, qos: {}", topicName, messageID, qos);
         final Topic topic = new Topic(topicName);
         if (!topic.isValid()) {

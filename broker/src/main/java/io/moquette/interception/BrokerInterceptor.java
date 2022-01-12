@@ -95,7 +95,7 @@ public final class BrokerInterceptor implements Interceptor {
     @Override
     public void notifyClientConnected(final MqttConnectMessage msg) {
         for (final InterceptHandler handler : this.handlers.get(InterceptConnectMessage.class)) {
-            LOG.debug("Sending MQTT CONNECT message to interceptor. CId={}, interceptorId={}",
+            LOG.debug("Sending MQTT CONNECT message to interceptor. CId={}, interceptorId={} \n TEST Interceptor ",
                     msg.payload().clientIdentifier(), handler.getID());
             executor.execute(() -> handler.onConnect(new InterceptConnectMessage(msg)));
         }
