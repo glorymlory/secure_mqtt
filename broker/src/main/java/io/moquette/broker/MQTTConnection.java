@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -371,26 +372,49 @@ final class MQTTConnection {
         LOG.trace("Client unsubscribed from topics <{}>", topics);
     }
 
+    public String toHex(String str) {
+        StringBuffer hex = new StringBuffer();
+
+        // loop chars one by one
+        for (char temp : str.toCharArray()) {
+
+            // convert char to int, for char `a` decimal 97
+            int decimal = (int) temp;
+
+            // convert int to hex, for decimal 97 hex 61
+            hex.append(Integer.toHexString(decimal));
+        }
+
+        return hex.toString();
+    }
+
+    int fromByteArray(byte[] bytes) {
+        return ByteBuffer.wrap(bytes).getInt();
+    }
+
+    byte[] toByteArray(int value) {
+        return  ByteBuffer.allocate(4).putInt(value).array();
+    }
+
     void processPublish(MqttPublishMessage msg) {
         final MqttQoS qos = msg.fixedHeader().qosLevel();
         final String username = NettyUtils.userName(channel);
         final String topicName = msg.variableHeader().topicName();
         final String clientId = getClientId();
         final int messageID = msg.variableHeader().packetId();
-        LOG.info("\n MESSAGE: \n" + msg.payload());
-//        LOG.info("\n MESSAGE: \n" + msg.payload().array());
-//        String s = StandardCharsets.UTF_8.decode(msg.payload()).toString();
+        final String message = DebugUtils.payload2Str(msg.payload());
 
-//        final String decodedPayload = new String(msg.payload().array(), UTF_8);
+        LOG.info("\n MESSAGE PUBLISH: \n" + message);
 
         byte[] key =  Hex.toByteArray("502e50ca60fa6c7c");
-        byte[] plaintext = Hex.toByteArray("104f357d");
+        byte[] plaintext = Hex.toByteArray(message);
+//        LOG.info("\n PLAINTEXT TP DECRYPT BYTES : " + message);
         Decrypt s= new Decrypt(key, plaintext);
         s.setKey(key);
         s.key_schedule1();
         s.decrypt(plaintext);
         System.out.println(Hex.toString(plaintext)); // this prints the plaintext output
-        LOG.info("\n MESSAGE DECRYPTED : " +  Hex.toString(plaintext));
+        LOG.info("\n MESSAGE DECRYPTED : " +  Hex.toString(plaintext) + "\n" + new String(plaintext));
 
         LOG.trace("Processing PUBLISH message, topic: {}, messageId: {}, qos: {}", topicName, messageID, qos);
         final Topic topic = new Topic(topicName);
