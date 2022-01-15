@@ -17,17 +17,22 @@ package io.moquette.broker;
 
 import static io.moquette.BrokerConstants.FLIGHT_BEFORE_RESEND_MS;
 import static io.moquette.BrokerConstants.INFLIGHT_WINDOW_SIZE;
+
+import edu.rit.util.Hex;
 import io.moquette.broker.SessionRegistry.EnqueuedMessage;
 import io.moquette.broker.SessionRegistry.PublishedMessage;
 import io.moquette.broker.subscriptions.Subscription;
 import io.moquette.broker.subscriptions.Topic;
+import io.moquette.speck.Decrypt;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.*;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
@@ -227,17 +232,35 @@ class Session {
     }
 
     public void sendPublishOnSessionAtQos(Topic topic, MqttQoS qos, ByteBuf payload) {
+
+        final String message = DebugUtils.payload2Str(payload);
+
+        LOG.info("\n MESSAGE PAYLOAD: " + payload);
+        LOG.info("\n MESSAGE PUBLISHED: \n" + message);
+
+        byte[] key =  Hex.toByteArray("502e50ca60fa6c7c");
+        byte[] plaintext = Hex.toByteArray(message);
+
+        Decrypt s= new Decrypt(key, plaintext);
+        s.setKey(key);
+        s.key_schedule1();
+        s.decrypt(plaintext);
+        System.out.println(Hex.toString(plaintext)); // this prints the plaintext output
+        LOG.info("\n MESSAGE DECRYPTED : " +  Hex.toString(plaintext) + "\n" + new String(plaintext));
+        final String messageToPublish = new String(plaintext);
+        final ByteBuf newPayload = Unpooled.wrappedBuffer(messageToPublish.getBytes(StandardCharsets.UTF_8));
+
         switch (qos) {
             case AT_MOST_ONCE:
                 if (connected()) {
-                    mqttConnection.sendPublishNotRetainedQos0(topic, qos, payload);
+                    mqttConnection.sendPublishNotRetainedQos0(topic, qos, newPayload);
                 }
                 break;
             case AT_LEAST_ONCE:
-                sendPublishQos1(topic, qos, payload);
+                sendPublishQos1(topic, qos, newPayload);
                 break;
             case EXACTLY_ONCE:
-                sendPublishQos2(topic, qos, payload);
+                sendPublishQos2(topic, qos, newPayload);
                 break;
             case FAILURE:
                 LOG.error("Not admissible");
