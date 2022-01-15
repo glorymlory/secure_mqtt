@@ -27,25 +27,21 @@ public class MqttPublisher {
         String clientId     = "1234";
         MqttDefaultFilePersistence subDataStore = new MqttDefaultFilePersistence("/tmp/sub");
 
-        byte[] key1 =Hex.toByteArray("502e50ca60fa6c7c");
-        byte[] plaintext1 = content.getBytes();
-        System.out.println("\n PLAINTEXT BYTES : " +  Arrays.toString(plaintext1));
-        Encrypt s1= new Encrypt(key1, plaintext1);
-        s1.setKey(key1);
-        s1.key_schedule();
-        s1.encrypt(plaintext1);
-        String encryptedPayload = Hex.toString(plaintext1);
-        System.out.println("ENCRYPTED: " + encryptedPayload); // printing the ciphertext  output
+        String encryptedPayload = encryptStr(content);
+        String encryptedLogin = encryptStr(USERNAME);
+        String encryptedPass = encryptStr(PASSWORD);
 
         try {
             MqttClient sampleClient = new MqttClient(broker, clientId, subDataStore);
             MqttConnectOptions connOpts = new MqttConnectOptions();
+            connOpts.setUserName(encryptedLogin);
+            connOpts.setPassword(encryptedPass.toCharArray());
             connOpts.setCleanSession(true);
             connOpts.setKeepAliveInterval(5);
-            System.out.println("Connecting to broker: "+broker);
+            System.out.println("Connecting to broker: " + broker);
             sampleClient.connect(connOpts);
             System.out.println("Connected");
-            System.out.println("Publishing message: "+encryptedPayload);
+            System.out.println("Publishing message: " + encryptedPayload);
             MqttMessage message = new MqttMessage(encryptedPayload.getBytes());
             message.setQos(qos);
             sampleClient.publish(topic, message);
@@ -61,5 +57,18 @@ public class MqttPublisher {
             System.out.println("excep " + me);
             me.printStackTrace();
         }
+    }
+
+    private static String encryptStr(String content) {
+        byte[] key1 =Hex.toByteArray("502e50ca60fa6c7c");
+        byte[] plaintext1 = content.getBytes();
+        System.out.println("\n PLAINTEXT BYTES : " +  Arrays.toString(plaintext1));
+        Encrypt s1= new Encrypt(key1, plaintext1);
+        s1.setKey(key1);
+        s1.key_schedule();
+        s1.encrypt(plaintext1);
+        String encryptedPayload = Hex.toString(plaintext1);
+        System.out.println("ENCRYPTED: " + encryptedPayload); // printing the ciphertext  output
+        return encryptedPayload;
     }
 }
