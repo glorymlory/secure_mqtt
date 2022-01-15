@@ -265,6 +265,7 @@ final class MQTTConnection {
         if (msg.variableHeader().hasUserName()) {
             byte[] pwd = null;
             if (msg.variableHeader().hasPassword()) {
+
                 //    DONE BY GROUP5
                 String decryptedPayload = decryptMsgWithSymmetricKey(DebugUtils.payload2Str(Unpooled.wrappedBuffer(msg.payload().passwordInBytes())));
                 pwd = decryptedPayload.getBytes(StandardCharsets.UTF_8);

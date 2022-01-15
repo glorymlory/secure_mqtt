@@ -217,7 +217,7 @@ class PostOffice {
     private void publish2Subscribers(ByteBuf payload, Topic topic, MqttQoS publishingQos) {
         Set<Subscription> topicMatchingSubscriptions = subscriptions.matchQosSharpening(topic);
 
-        // DONE BY GROUP5 decrypt the content of payload and send futher for processing (signing and ecnryption )
+        // DONE BY GROUP5 decrypt the content of payload and hashing and signing the new payload
         final String decryptedPayload = decryptMsgWithSymmetricKey(DebugUtils.payload2Str(payload));
         final String hashedAndSignedPayload = hashAndSignPayload(decryptedPayload);
 

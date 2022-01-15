@@ -25,12 +25,14 @@ import io.moquette.broker.subscriptions.Subscription;
 import io.moquette.broker.subscriptions.Topic;
 import io.moquette.speck.Decrypt;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.*;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
@@ -238,6 +240,7 @@ class Session {
 
 //        final String messageToPublish = decryptMsgWithSymmetricKey(message);
 //        final ByteBuf newPayload = Unpooled.wrappedBuffer(messageToPublish.getBytes(StandardCharsets.UTF_8));
+
 
         switch (qos) {
             case AT_MOST_ONCE:
