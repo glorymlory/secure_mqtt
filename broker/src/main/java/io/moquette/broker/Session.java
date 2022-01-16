@@ -15,10 +15,15 @@
  */
 package io.moquette.broker;
 
+import static io.moquette.BrokerConstants.FLIGHT_BEFORE_RESEND_MS;
+import static io.moquette.BrokerConstants.INFLIGHT_WINDOW_SIZE;
+
+import edu.rit.util.Hex;
 import io.moquette.broker.SessionRegistry.EnqueuedMessage;
 import io.moquette.broker.SessionRegistry.PublishedMessage;
 import io.moquette.broker.subscriptions.Subscription;
 import io.moquette.broker.subscriptions.Topic;
+import io.moquette.speck.Decrypt;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.*;
 import io.netty.util.ReferenceCountUtil;
@@ -228,6 +233,12 @@ class Session {
     }
 
     public void sendPublishOnSessionAtQos(Topic topic, MqttQoS qos, ByteBuf payload) {
+//        final String message = DebugUtils.payload2Str(payload);
+        LOG.info("\n MESSAGE PAYLOAD: " + payload);
+
+//        final String messageToPublish = decryptMsgWithSymmetricKey(message);
+//        final ByteBuf newPayload = Unpooled.wrappedBuffer(messageToPublish.getBytes(StandardCharsets.UTF_8));
+
         switch (qos) {
             case AT_MOST_ONCE:
                 if (connected()) {
@@ -245,6 +256,22 @@ class Session {
         }
 
     }
+
+    //    GROUP5
+    private String decryptMsgWithSymmetricKey(String payload) {
+        byte[] key = Hex.toByteArray("502e50ca60fa6c7c");
+        byte[] passwordInPlaintextBytes = Hex.toByteArray(payload);
+
+        Decrypt s = new Decrypt(key, passwordInPlaintextBytes);
+        s.setKey(key);
+        s.key_schedule1();
+        s.decrypt(passwordInPlaintextBytes);
+        LOG.info("\n MESSAGE DECRYPTED PASSWORD : " + new String(passwordInPlaintextBytes));
+        final String passwordInPlaintext = new String(passwordInPlaintextBytes);
+
+        return passwordInPlaintext;
+    }
+    //    END
 
     private void sendPublishQos1(Topic topic, MqttQoS qos, ByteBuf payload) {
         if (!connected() && isClean()) {

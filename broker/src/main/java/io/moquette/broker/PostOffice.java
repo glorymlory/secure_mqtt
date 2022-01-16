@@ -217,13 +217,13 @@ class PostOffice {
     private void publish2Subscribers(ByteBuf payload, Topic topic, MqttQoS publishingQos) {
         Set<Subscription> topicMatchingSubscriptions = subscriptions.matchQosSharpening(topic);
 
-        final String decryptedPayload = decryptPayload(payload);
-        //new code add:
+        // DONE BY GROUP5 decrypt the content of payload and send futher for processing (signing and ecnryption )
+        final String decryptedPayload = decryptMsgWithSymmetricKey(DebugUtils.payload2Str(payload));
         final String hashedAndSignedPayload = hashAndSignPayload(decryptedPayload);
 
         final String messageToPublish = hashedAndSignedPayload;
         final ByteBuf newPayload = Unpooled.wrappedBuffer(messageToPublish.getBytes(StandardCharsets.UTF_8));
-
+// END
 
         for (final Subscription sub : topicMatchingSubscriptions) {
             MqttQoS qos = lowerQosToTheSubscriptionDesired(sub, publishingQos);
@@ -268,21 +268,21 @@ class PostOffice {
         return "";
     }
 
-    private String decryptPayload(ByteBuf payload) {
-        final String message = DebugUtils.payload2Str(payload);
-        LOG.info("\n MESSAGE PUBLISH: \n" + message);
+//    GROUP5
+    private String decryptMsgWithSymmetricKey(String payload) {
+        byte[] key = Hex.toByteArray("502e50ca60fa6c7c");
+        byte[] passwordInPlaintextBytes = Hex.toByteArray(payload);
 
-        byte[] key =  Hex.toByteArray("502e50ca60fa6c7c");
-        byte[] plaintext = Hex.toByteArray(message);
-//        LOG.info("\n PLAINTEXT TP DECRYPT BYTES : " + message);
-        Decrypt s= new Decrypt(key, plaintext);
+        Decrypt s = new Decrypt(key, passwordInPlaintextBytes);
         s.setKey(key);
         s.key_schedule1();
-        s.decrypt(plaintext);
-        System.out.println(Hex.toString(plaintext)); // this prints the plaintext output
-        LOG.info("\n MESSAGE DECRYPTED : " +  Hex.toString(plaintext) + "\n" + new String(plaintext));
-        return new String(plaintext);
+        s.decrypt(passwordInPlaintextBytes);
+        LOG.info("\n MESSAGE DECRYPTED PASSWORD : " + new String(passwordInPlaintextBytes));
+        final String passwordInPlaintext = new String(passwordInPlaintextBytes);
+
+        return passwordInPlaintext;
     }
+    //    END
 
     /**
      * First phase of a publish QoS2 protocol, sent by publisher to the broker. Publish to all interested

@@ -15,10 +15,13 @@
  */
 package io.moquette.broker;
 
+import edu.rit.util.Hex;
 import io.moquette.broker.security.IAuthenticator;
 import io.moquette.broker.subscriptions.Topic;
+import io.moquette.speck.Decrypt;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -30,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -98,7 +102,7 @@ final class MQTTConnection {
                 break;
             case PINGREQ:
                 MqttFixedHeader pingHeader = new MqttFixedHeader(MqttMessageType.PINGRESP, false, AT_MOST_ONCE,
-                                                                false, 0);
+                    false, 0);
                 MqttMessage pingResp = new MqttMessage(pingHeader);
                 channel.writeAndFlush(pingResp).addListener(CLOSE_ON_FAILURE);
                 break;
@@ -261,12 +265,18 @@ final class MQTTConnection {
         if (msg.variableHeader().hasUserName()) {
             byte[] pwd = null;
             if (msg.variableHeader().hasPassword()) {
-                pwd = msg.payload().passwordInBytes();
+                //    DONE BY GROUP5
+                String decryptedPayload = decryptMsgWithSymmetricKey(DebugUtils.payload2Str(Unpooled.wrappedBuffer(msg.payload().passwordInBytes())));
+                pwd = decryptedPayload.getBytes(StandardCharsets.UTF_8);
+//                END
             } else if (!brokerConfig.isAllowAnonymous()) {
                 LOG.info("Client didn't supply any password and MQTT anonymous mode is disabled CId={}", clientId);
                 return false;
             }
-            final String login = msg.payload().userName();
+            //    DONE BY GROUP5
+            final String loginPayload = DebugUtils.payload2Str(Unpooled.wrappedBuffer(msg.payload().userName().getBytes(StandardCharsets.UTF_8)));
+            final String login = decryptMsgWithSymmetricKey(loginPayload);
+            //                END
             if (!authenticator.checkValid(clientId, login, pwd)) {
                 LOG.info("Authenticator has rejected the MQTT credentials CId={}, username={}", clientId, login);
                 return false;
@@ -278,6 +288,22 @@ final class MQTTConnection {
         }
         return true;
     }
+
+    //    DONE BY GROUP5
+    private String decryptMsgWithSymmetricKey(String payload) {
+        byte[] key = Hex.toByteArray("502e50ca60fa6c7c");
+        byte[] passwordInPlaintextBytes = Hex.toByteArray(payload);
+
+        Decrypt s = new Decrypt(key, passwordInPlaintextBytes);
+        s.setKey(key);
+        s.key_schedule1();
+        s.decrypt(passwordInPlaintextBytes);
+        LOG.info("\n MESSAGE DECRYPTED PASSWORD : " + new String(passwordInPlaintextBytes));
+        final String passwordInPlaintext = new String(passwordInPlaintextBytes);
+
+        return passwordInPlaintext;
+    }
+//    END
 
     void handleConnectionLost() {
         String clientID = NettyUtils.clientID(channel);
@@ -297,7 +323,7 @@ final class MQTTConnection {
         connected = false;
         //dispatch connection lost to intercept.
         String userName = NettyUtils.userName(channel);
-        postOffice.dispatchConnectionLost(clientID,userName);
+        postOffice.dispatchConnectionLost(clientID, userName);
         LOG.trace("dispatch disconnection: userName={}", userName);
     }
 
@@ -380,7 +406,7 @@ final class MQTTConnection {
     }
 
     byte[] toByteArray(int value) {
-        return  ByteBuffer.allocate(4).putInt(value).array();
+        return ByteBuffer.allocate(4).putInt(value).array();
     }
 
     void processPublish(MqttPublishMessage msg) {
@@ -389,6 +415,20 @@ final class MQTTConnection {
         final String topicName = msg.variableHeader().topicName();
         final String clientId = getClientId();
         final int messageID = msg.variableHeader().packetId();
+
+//        final String message = DebugUtils.payload2Str(msg.payload());
+//        LOG.info("\n MESSAGE PAYLOAD: " + msg.payload());
+//        LOG.info("\n MESSAGE PUBLISHED: \n" + message);
+//
+//        byte[] key =  Hex.toByteArray("502e50ca60fa6c7c");
+//        byte[] plaintext = Hex.toByteArray(message);
+//
+//        Decrypt s= new Decrypt(key, plaintext);
+//        s.setKey(key);
+//        s.key_schedule1();
+//        s.decrypt(plaintext);
+//        System.out.println(Hex.toString(plaintext)); // this prints the plaintext output
+//        LOG.info("\n MESSAGE DECRYPTED : " +  Hex.toString(plaintext) + "\n" + new String(plaintext));
 
         LOG.trace("Processing PUBLISH message, topic: {}, messageId: {}, qos: {}", topicName, messageID, qos);
         final Topic topic = new Topic(topicName);
@@ -434,6 +474,7 @@ final class MQTTConnection {
         final String topicName = publishMsg.variableHeader().topicName();
         final String clientId = getClientId();
         MqttQoS qos = publishMsg.fixedHeader().qosLevel();
+
         if (LOG.isTraceEnabled()) {
             LOG.trace("Sending PUBLISH({}) message. MessageId={}, topic={}, payload={}", qos, packetId, topicName,
                 DebugUtils.payload2Str(publishMsg.payload()));
@@ -455,7 +496,6 @@ final class MQTTConnection {
             if (msg instanceof ByteBufHolder) {
                 retainedDup = ((ByteBufHolder) msg).retainedDuplicate();
             }
-
             ChannelFuture channelFuture;
             if (brokerConfig.isImmediateBufferFlush()) {
                 channelFuture = channel.writeAndFlush(retainedDup);
@@ -476,7 +516,7 @@ final class MQTTConnection {
     void sendPubAck(int messageID) {
         LOG.trace("sendPubAck for messageID: {}", messageID);
         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBACK, false, AT_MOST_ONCE,
-                                                  false, 0);
+            false, 0);
         MqttPubAckMessage pubAckMessage = new MqttPubAckMessage(fixedHeader, from(messageID));
         sendIfWritableElseDrop(pubAckMessage);
     }
