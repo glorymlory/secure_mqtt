@@ -15,8 +15,6 @@
  */
 package io.moquette.broker;
 
-import static io.moquette.BrokerConstants.FLIGHT_BEFORE_RESEND_MS;
-import static io.moquette.BrokerConstants.INFLIGHT_WINDOW_SIZE;
 import io.moquette.broker.SessionRegistry.EnqueuedMessage;
 import io.moquette.broker.SessionRegistry.PublishedMessage;
 import io.moquette.broker.subscriptions.Subscription;
@@ -34,6 +32,9 @@ import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static io.moquette.BrokerConstants.FLIGHT_BEFORE_RESEND_MS;
+import static io.moquette.BrokerConstants.INFLIGHT_WINDOW_SIZE;
 
 class Session {
 
@@ -242,6 +243,7 @@ class Session {
             case FAILURE:
                 LOG.error("Not admissible");
         }
+
     }
 
     private void sendPublishQos1(Topic topic, MqttQoS qos, ByteBuf payload) {
@@ -265,7 +267,7 @@ class Session {
             inflightTimeouts.add(new InFlightPacket(packetId, FLIGHT_BEFORE_RESEND_MS));
 
             MqttPublishMessage publishMsg = MQTTConnection.notRetainedPublishWithMessageId(topic.toString(), qos,
-                                                                                           payload, packetId);
+                payload, packetId);
             mqttConnection.sendPublish(publishMsg);
             LOG.debug("Write direct to the peer, inflight slots: {}", inflightSlots.get());
             if (inflightSlots.get() == 0) {
@@ -298,7 +300,7 @@ class Session {
             inflightTimeouts.add(new InFlightPacket(packetId, FLIGHT_BEFORE_RESEND_MS));
 
             MqttPublishMessage publishMsg = MQTTConnection.notRetainedPublishWithMessageId(topic.toString(), qos,
-                                                                                           payload, packetId);
+                payload, packetId);
             mqttConnection.sendPublish(publishMsg);
 
             drainQueueToConnection();

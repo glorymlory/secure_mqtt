@@ -15,16 +15,26 @@
  */
 package io.moquette.broker;
 
-import io.moquette.interception.BrokerInterceptor;
+import edu.rit.util.Hex;
+import io.moquette.broker.Integrity.AsymmetricCryptography;
 import io.moquette.broker.subscriptions.ISubscriptionsDirectory;
 import io.moquette.broker.subscriptions.Subscription;
 import io.moquette.broker.subscriptions.Topic;
+import io.moquette.interception.BrokerInterceptor;
+import io.moquette.speck.Decrypt;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.crypto.NoSuchPaddingException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -207,6 +217,14 @@ class PostOffice {
     private void publish2Subscribers(ByteBuf payload, Topic topic, MqttQoS publishingQos) {
         Set<Subscription> topicMatchingSubscriptions = subscriptions.matchQosSharpening(topic);
 
+        final String decryptedPayload = decryptPayload(payload);
+        //new code add:
+        final String hashedAndSignedPayload = hashAndSignPayload(decryptedPayload);
+
+        final String messageToPublish = hashedAndSignedPayload;
+        final ByteBuf newPayload = Unpooled.wrappedBuffer(messageToPublish.getBytes(StandardCharsets.UTF_8));
+
+
         for (final Subscription sub : topicMatchingSubscriptions) {
             MqttQoS qos = lowerQosToTheSubscriptionDesired(sub, publishingQos);
             Session targetSession = this.sessionRegistry.retrieve(sub.getClientId());
@@ -215,7 +233,7 @@ class PostOffice {
             if (isSessionPresent) {
                 LOG.debug("Sending PUBLISH message to active subscriber CId: {}, topicFilter: {}, qos: {}",
                           sub.getClientId(), sub.getTopicFilter(), qos);
-                targetSession.sendPublishOnSessionAtQos(topic, qos, payload);
+                targetSession.sendPublishOnSessionAtQos(topic, qos, newPayload);
             } else {
                 // If we are, the subscriber disconnected after the subscriptions tree selected that session as a
                 // destination.
@@ -223,6 +241,47 @@ class PostOffice {
                           sub.getTopicFilter(), qos);
             }
         }
+    }
+
+    private String hashAndSignPayload(String payload) {
+        try {
+            AsymmetricCryptography ac = new AsymmetricCryptography();
+            Path path = Paths.get("privateKey");
+            LOG.info("\nPATH TP FILE: \n" + path.toAbsolutePath());
+            String pathToSecrets = getClass().getResource("/KeyPair").getPath();
+            PrivateKey privateKey = ac.getPrivate(pathToSecrets + "/privateKey");
+            PublicKey publicKey = ac.getPublic(pathToSecrets+ "/publicKey");
+            //hash message:
+            String msg = new String(payload);
+            int hash = msg.hashCode();
+            String hash_msg = String.valueOf(hash);
+            String new_payload = hash_msg + "." + msg;
+
+            //encrypt hashed message:
+            String encrypted_msg = ac.encryptText(new_payload, privateKey);
+            return encrypted_msg;
+        } catch (NoSuchPaddingException | NoSuchAlgorithmException e) {
+            LOG.error("Asymmetric encryption exception thrown", e);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    private String decryptPayload(ByteBuf payload) {
+        final String message = DebugUtils.payload2Str(payload);
+        LOG.info("\n MESSAGE PUBLISH: \n" + message);
+
+        byte[] key =  Hex.toByteArray("502e50ca60fa6c7c");
+        byte[] plaintext = Hex.toByteArray(message);
+//        LOG.info("\n PLAINTEXT TP DECRYPT BYTES : " + message);
+        Decrypt s= new Decrypt(key, plaintext);
+        s.setKey(key);
+        s.key_schedule1();
+        s.decrypt(plaintext);
+        System.out.println(Hex.toString(plaintext)); // this prints the plaintext output
+        LOG.info("\n MESSAGE DECRYPTED : " +  Hex.toString(plaintext) + "\n" + new String(plaintext));
+        return new String(plaintext);
     }
 
     /**

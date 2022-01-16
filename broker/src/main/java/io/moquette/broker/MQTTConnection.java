@@ -15,10 +15,8 @@
  */
 package io.moquette.broker;
 
-import edu.rit.util.Hex;
 import io.moquette.broker.security.IAuthenticator;
 import io.moquette.broker.subscriptions.Topic;
-import io.moquette.speck.Decrypt;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
 import io.netty.channel.Channel;
@@ -132,18 +130,7 @@ final class MQTTConnection {
 
     void processConnect(MqttConnectMessage msg) {
         MqttConnectPayload payload = msg.payload();
-        //  INSERT DECRYPTION
-//        if(args.length !=2){
-//            usage();
-//        }
-//        byte[] key = Hex.toByteArray(args[0]);
-//        byte[] plaintext = Hex.toByteArray(args[1]);
-//        Decrypt s= new Decrypt(key, plaintext);
-//        s.setKey(key);
-//        s.key_schedule1();
-//        s.decrypt(plaintext);
-//        System.out.println(Hex.toString(plaintext)); // this prints the plaintext output
-//
+
         LOG.info("\n MESSAGE: " + payload);
         String clientId = payload.clientIdentifier();
         final String username = payload.userName();
@@ -402,19 +389,6 @@ final class MQTTConnection {
         final String topicName = msg.variableHeader().topicName();
         final String clientId = getClientId();
         final int messageID = msg.variableHeader().packetId();
-        final String message = DebugUtils.payload2Str(msg.payload());
-
-        LOG.info("\n MESSAGE PUBLISH: \n" + message);
-
-        byte[] key =  Hex.toByteArray("502e50ca60fa6c7c");
-        byte[] plaintext = Hex.toByteArray(message);
-//        LOG.info("\n PLAINTEXT TP DECRYPT BYTES : " + message);
-        Decrypt s= new Decrypt(key, plaintext);
-        s.setKey(key);
-        s.key_schedule1();
-        s.decrypt(plaintext);
-        System.out.println(Hex.toString(plaintext)); // this prints the plaintext output
-        LOG.info("\n MESSAGE DECRYPTED : " +  Hex.toString(plaintext) + "\n" + new String(plaintext));
 
         LOG.trace("Processing PUBLISH message, topic: {}, messageId: {}, qos: {}", topicName, messageID, qos);
         final Topic topic = new Topic(topicName);
