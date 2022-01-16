@@ -121,9 +121,20 @@ public class AsymmetricCryptography {
 		int new_hash = part2.hashCode();
 		String new_hash_msg = String.valueOf(new_hash);
 
+		if(hash_msg == new_hash_msg)
+		{
+			//print the payload
+			//payload is int String part2
+			System.out.println(part2);
+		}
+		else
+		{
+				// print payload is not valid
+		}
 
 
-		// print results
+
+		// print results for test
 		System.out.println("Original Message: " + msg + "\nHashed Message: " + hash_msg + 
 		"\n Entire Payload: " + payload+
 			"\nEncrypted Message: " + encrypted_msg
