@@ -299,7 +299,7 @@ final class MQTTConnection {
         s.setKey(key);
         s.key_schedule1();
         s.decrypt(passwordInPlaintextBytes);
-        LOG.info("\n MESSAGE DECRYPTED PASSWORD : " + new String(passwordInPlaintextBytes));
+        LOG.info("\n MESSAGE DECRYPTED : " + new String(passwordInPlaintextBytes));
         final String passwordInPlaintext = new String(passwordInPlaintextBytes);
 
         return passwordInPlaintext;

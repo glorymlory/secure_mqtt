@@ -34,7 +34,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -248,17 +247,18 @@ class PostOffice {
             AsymmetricCryptography ac = new AsymmetricCryptography();
             Path path = Paths.get("privateKey");
             LOG.info("\nPATH TP FILE: \n" + path.toAbsolutePath());
-            String pathToSecrets = getClass().getResource("/KeyPair").getPath();
-            PrivateKey privateKey = ac.getPrivate(pathToSecrets + "/privateKey");
-            PublicKey publicKey = ac.getPublic(pathToSecrets+ "/publicKey");
+
+            PrivateKey privateKey = ac.getPrivate(path.toAbsolutePath().toString());
             //hash message:
             String msg = new String(payload);
             int hash = msg.hashCode();
             String hash_msg = String.valueOf(hash);
+            LOG.info("\nHASHED PAYLOAD: \n" + hash_msg);
             String new_payload = hash_msg + "." + msg;
-
+            LOG.info("\nFULL PAYLOAD: \n" + new_payload);
             //encrypt hashed message:
             String encrypted_msg = ac.encryptText(new_payload, privateKey);
+            LOG.info("\nENCRYPTED PAYLOAD: \n" + encrypted_msg);
             return encrypted_msg;
         } catch (NoSuchPaddingException | NoSuchAlgorithmException e) {
             LOG.error("Asymmetric encryption exception thrown", e);
@@ -277,7 +277,7 @@ class PostOffice {
         s.setKey(key);
         s.key_schedule1();
         s.decrypt(passwordInPlaintextBytes);
-        LOG.info("\n MESSAGE DECRYPTED PASSWORD : " + new String(passwordInPlaintextBytes));
+        LOG.info("\n MESSAGE DECRYPTED : " + new String(passwordInPlaintextBytes));
         final String passwordInPlaintext = new String(passwordInPlaintextBytes);
 
         return passwordInPlaintext;

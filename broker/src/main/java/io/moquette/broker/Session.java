@@ -15,9 +15,6 @@
  */
 package io.moquette.broker;
 
-import static io.moquette.BrokerConstants.FLIGHT_BEFORE_RESEND_MS;
-import static io.moquette.BrokerConstants.INFLIGHT_WINDOW_SIZE;
-
 import edu.rit.util.Hex;
 import io.moquette.broker.SessionRegistry.EnqueuedMessage;
 import io.moquette.broker.SessionRegistry.PublishedMessage;
@@ -25,14 +22,12 @@ import io.moquette.broker.subscriptions.Subscription;
 import io.moquette.broker.subscriptions.Topic;
 import io.moquette.speck.Decrypt;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.*;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
@@ -269,7 +264,7 @@ class Session {
         s.setKey(key);
         s.key_schedule1();
         s.decrypt(passwordInPlaintextBytes);
-        LOG.info("\n MESSAGE DECRYPTED PASSWORD : " + new String(passwordInPlaintextBytes));
+        LOG.info("\n MESSAGE DECRYPTED : " + new String(passwordInPlaintextBytes));
         final String passwordInPlaintext = new String(passwordInPlaintextBytes);
 
         return passwordInPlaintext;
