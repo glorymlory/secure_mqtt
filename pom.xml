@@ -23,7 +23,7 @@
         </dependency>
 
         <!--
-        mvn install:install-file    -Dfile=/mnt/c/Users/yaoun/Documents/dev/MqttClients/src/main/java/pj2_20190611.jar    -DgroupId=edu.rit.pj2    -DartifactId=pj2    -Dversion=1.0    -DgeneratePom=true    -Dpackaging=jar
+        mvn install:install-file    -Dfile=/home/deopranav/Documents/seclab/client/secure_mqtt/src/main/java/pj2_20190611.jar    -DgroupId=edu.rit.pj2    -DartifactId=pj2    -Dversion=1.0    -DgeneratePom=true    -Dpackaging=jar
         -->
         <dependency>
             <groupId>edu.rit.pj2</groupId>
@@ -32,6 +32,18 @@
 <!--            <scope>system</scope>-->
 <!--            <systemPath>${project.basedir}/src/main/java/pj2_20190611.jar</systemPath>-->
         </dependency>
+
+        <!-- https://mvnrepository.com/artifact/commons-codec/commons-codec -->
+
+       
+
+<dependency>
+    <groupId>commons-codec</groupId>
+    <artifactId>commons-codec</artifactId>
+    <version>1.9</version>
+</dependency>
+
+
     </dependencies>
 
     <build>
