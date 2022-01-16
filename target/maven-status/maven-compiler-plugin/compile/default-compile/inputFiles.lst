@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /mnt/c/Users/yaoun/Documents/dev/MqttClients/src/main/java/Integrity/GenerateKeys.java
 /mnt/c/Users/yaoun/Documents/dev/MqttClients/src/main/java/speck/DecryptFile.java
 /mnt/c/Users/yaoun/Documents/dev/MqttClients/src/main/java/speck/EncryptFile.java
@@ -7,3 +8,11 @@
 /mnt/c/Users/yaoun/Documents/dev/MqttClients/src/main/java/MqttPublisher.java
 /mnt/c/Users/yaoun/Documents/dev/MqttClients/src/main/java/Integrity/AsymmetricCryptography.java
 /mnt/c/Users/yaoun/Documents/dev/MqttClients/src/main/java/speck/Decrypt.java
+=======
+/Users/reply/Documents/mqttclients/secure_mqtt/src/main/java/speck/BlockCipher.java
+/Users/reply/Documents/mqttclients/secure_mqtt/src/main/java/speck/Encrypt.java
+/Users/reply/Documents/mqttclients/secure_mqtt/src/main/java/speck/Decrypt.java
+/Users/reply/Documents/mqttclients/secure_mqtt/src/main/java/MqttPublisher.java
+/Users/reply/Documents/mqttclients/secure_mqtt/src/main/java/speck/EncryptFile.java
+/Users/reply/Documents/mqttclients/secure_mqtt/src/main/java/speck/DecryptFile.java
+>>>>>>> 0834218c88e262ce6a72f98ab81c917e06e5ce5f

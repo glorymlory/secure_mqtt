@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 speck/DecryptFile.class
 MqttPublisher.class
 speck/Encrypt.class
@@ -7,3 +8,11 @@ speck/Decrypt.class
 Integrity/AsymmetricCryptography.class
 speck/EncryptFile.class
 MqttSubscriber.class
+=======
+speck/DecryptFile.class
+speck/Decrypt.class
+MqttPublisher.class
+speck/EncryptFile.class
+speck/Encrypt.class
+speck/BlockCipher.class
+>>>>>>> 0834218c88e262ce6a72f98ab81c917e06e5ce5f
