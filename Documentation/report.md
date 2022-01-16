@@ -256,8 +256,11 @@ The two clients `subscribing` are:
 
 - This goes to add that there must be some sort of a method for broker to differentiate between TLS and non TLS connections and relay information published via TLS only over a TLS enabled subscriber, if a subscriber does not support TLS, then the data should not be sent to the subscriber even thought it is subscribed to a given topic.
 
-![Publish message over port 1883, without TLS](/images/subscribe.png) 
-![nmap scan](/images2/nat_nw_2.jpg) 
+![Publish message over port 1883, without TLS](/images/No_TLS_Publish.png) 
+![Publish message over port 8883, with TLS](/images/TLS_Publish.png) 
+![Subscribed Clients](/images/subscribe.png) 
+
+ 
 
 
 
