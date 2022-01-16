@@ -21,7 +21,7 @@ public class MqttPublisher {
     public static void main(String[] args) {
 
         String topic        = "test";
-        String content      = "HelloTim";
+        String content      = "HelloWorld";
         int qos             = 0;
         String broker       = "tcp://0.0.0.0:1883";
         String clientId     = "1234";

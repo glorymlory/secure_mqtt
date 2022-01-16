@@ -76,7 +76,7 @@ public class MqttSubscriber implements MqttCallback {
             String part2 = parts[1]; // 034556
 
             //hash new payload to compare:
-            int hash = part1.hashCode();
+            int hash = part2.hashCode();
             String hash_msg = String.valueOf(hash);
             int new_hash = part2.hashCode();
             String new_hash_msg = String.valueOf(new_hash);
@@ -90,6 +90,9 @@ public class MqttSubscriber implements MqttCallback {
                     + "\nString part 2 " + part2
                     + "\nNew hash " + new_hash_msg
             );
+
+//            HERE WE CAN COMPARE THE HASHES AND GIVE APPROPRIATE RESPONSE ON INTEGRITY VIOLATION
+
         } catch (Exception e) {
             e.printStackTrace();
         }
