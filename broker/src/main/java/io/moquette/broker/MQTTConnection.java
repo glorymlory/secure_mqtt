@@ -474,6 +474,8 @@ final class MQTTConnection {
         sendPubCompMessage(messageID);
     }
 
+
+    // function to publish
     void sendPublish(MqttPublishMessage publishMsg) {
         final int packetId = publishMsg.variableHeader().packetId();
         final String topicName = publishMsg.variableHeader().topicName();

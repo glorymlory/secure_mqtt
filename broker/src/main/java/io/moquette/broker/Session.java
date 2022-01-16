@@ -19,6 +19,7 @@ import static io.moquette.BrokerConstants.FLIGHT_BEFORE_RESEND_MS;
 import static io.moquette.BrokerConstants.INFLIGHT_WINDOW_SIZE;
 
 import edu.rit.util.Hex;
+import integrity.AsymmetricCryptography;
 import io.moquette.broker.SessionRegistry.EnqueuedMessage;
 import io.moquette.broker.SessionRegistry.PublishedMessage;
 import io.moquette.broker.subscriptions.Subscription;
@@ -33,12 +34,36 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.security.PrivateKey;
 import java.util.*;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
+import java.security.GeneralSecurityException;
+import java.security.InvalidKeyException;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.MessageDigest;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+
+import org.apache.commons.codec.binary.Base64;
 
 class Session {
 
@@ -238,6 +263,8 @@ class Session {
         LOG.info("\n MESSAGE PAYLOAD: " + payload);
         LOG.info("\n MESSAGE PUBLISHED: \n" + message);
 
+
+        // add encryption instead :: so hash plus encryption
         byte[] key =  Hex.toByteArray("502e50ca60fa6c7c");
         byte[] plaintext = Hex.toByteArray(message);
 
@@ -247,7 +274,27 @@ class Session {
         s.decrypt(plaintext);
         System.out.println(Hex.toString(plaintext)); // this prints the plaintext output
         LOG.info("\n MESSAGE DECRYPTED : " +  Hex.toString(plaintext) + "\n" + new String(plaintext));
-        final String messageToPublish = new String(plaintext);
+
+        //new code add:
+
+        AsymmetricCryptography ac = new AsymmetricCryptography();
+		PrivateKey privateKey = ac.getPrivate("KeyPair/privateKey");
+		PublicKey publicKey = ac.getPublic("KeyPair/publicKey");
+
+        //hash message:
+        String msg = new String(plaintext);
+        int hash = msg.hashCode();
+        String hash_msg= String.valueOf(hash);
+        String new_payload = hash_msg+","+msg;  
+
+
+        //encrypt hashed message:
+        String encrypted_msg = ac.encryptText(new_payload, privateKey);
+
+
+
+
+        final String messageToPublish = encrypted_msg;
         final ByteBuf newPayload = Unpooled.wrappedBuffer(messageToPublish.getBytes(StandardCharsets.UTF_8));
 
         switch (qos) {
