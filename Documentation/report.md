@@ -117,11 +117,12 @@ Usage: mosquitto_sub {[-h host] [--unix path] [-p port] [-u username] [-P passwo
 Most MQTT Brokers already support the enforcement of TLS on all MQTT clients to overcome the existing security issues of the protocol.
 
 #### 2.1 Enforce TLS on your MQTT Broker
-*Configure the MQTT Broker such that it enforces TLS*
-*Setup your own CA and create certificates for the broker and all the clients*
-*Again, use wireshark to inspect the sent packages in order to verify that the security of MQTT has been improved.*
+**1. Configure the MQTT Broker such that it enforces TLS**\
+**2. Setup your own CA and create certificates for the broker and all the clients**\
+**3. Again, use wireshark to inspect the sent packages in order to verify that the security of MQTT has been improved.**\
 
-**On Broker Machine** 
+
+**Set Up On Broker Machine** 
 
 1. First we install openssl on machine with Broker and clients
 
@@ -255,8 +256,16 @@ The two clients `subscribing` are:
 
 - This goes to add that there must be some sort of a method for broker to differentiate between TLS and non TLS connections and relay information published via TLS only over a TLS enabled subscriber, if a subscriber does not support TLS, then the data should not be sent to the subscriber even thought it is subscribed to a given topic.
 
+![Publish message over port 1883, without TLS](/images/subscribe.png) 
+![nmap scan](/images2/nat_nw_2.jpg) 
 
 
 
 #### 3.3 Assume that an attacker has access to the network and is able to connect to the MQTT Broker via port 1883 (no authentication). Is this a security issue? If so, what are the possible attacks that the attacker could execute?
 
+The attacker could subscribe to any topics.
+The attacker could find out what topics are present, and can publish false data to the same.
+(describe more)
+
+#### Exercise 4: Improving the Security of MQTT once again
+**Try to come up with a solution to fix the existing security issues when using multiple listeners on the MQTT Broker. What you gonna do is completely up to you! Be creative and implement your solution!**
