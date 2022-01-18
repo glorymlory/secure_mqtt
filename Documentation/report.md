@@ -272,3 +272,18 @@ The attacker could find out what topics are present, and can publish false data 
 
 #### Exercise 4: Improving the Security of MQTT once again
 **Try to come up with a solution to fix the existing security issues when using multiple listeners on the MQTT Broker. What you gonna do is completely up to you! Be creative and implement your solution!**
+
+MQTT currently faces from a multitude of limitations that compromises the security of the deployed MQTT system or subsystem. Some oof which are mentioned below:
+
+- Unlimited number of brokers
+- Poor authentication. Although mosquitto does implement authentication, it is not enabled by default. Also once enabled, the credentials are passed as plaintext and can be easily inspected by a malicious party who may be monitoring network packets.
+- There is no encryption of data unless TLS is used, which not all IoT devices are capable of.
+- That said, not all devices support TLS/ SSL.
+- There is no method for broker to differentiate data it received, i.e which data should be given priority, which data is more sensitive in nature and should only be sent on secure channels.
+- Not too often, the broker is a single point of failure and this could cause issues, if the broker stops working or is the target of a DDos attack.
+
+Some ways how this could be abused:
+
+- Malicious publishers may publish non-sense data over a broker that is not deployed securely (I.e has no authentication or if credentials were to leak by someone having access to network and simply inspecting mqtt packets.)
+- Malicious subscribers may subscribe to any topic being published by broker ( using `#`), and potentially access sensitive data. Sensitive data could be data from a smart home such as temperature readings, power consumption readings etc, or from a smart vehicle systems such as engine rotations (RPM), car speeds, braking time etc.
+- It would prove even more disastrous if someone were to be able to publish false data to such topics and these data are used by end system to function.
