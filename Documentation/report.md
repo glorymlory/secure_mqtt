@@ -278,6 +278,7 @@ MQTT currently faces from a multitude of limitations that compromises the securi
 - Unlimited number of brokers
 - Poor authentication. Although mosquitto does implement authentication, it is not enabled by default. Also once enabled, the credentials are passed as plaintext and can be easily inspected by a malicious party who may be monitoring network packets.
 - There is no encryption of data unless TLS is used, which not all IoT devices are capable of.
+- There is no implementation of data integrity and data authenticity measures.
 - That said, not all devices support TLS/ SSL.
 - There is no method for broker to differentiate data it received, i.e which data should be given priority, which data is more sensitive in nature and should only be sent on secure channels.
 - Not too often, the broker is a single point of failure and this could cause issues, if the broker stops working or is the target of a DDos attack.
@@ -287,3 +288,19 @@ Some ways how this could be abused:
 - Malicious publishers may publish non-sense data over a broker that is not deployed securely (I.e has no authentication or if credentials were to leak by someone having access to network and simply inspecting mqtt packets.)
 - Malicious subscribers may subscribe to any topic being published by broker ( using `#`), and potentially access sensitive data. Sensitive data could be data from a smart home such as temperature readings, power consumption readings etc, or from a smart vehicle systems such as engine rotations (RPM), car speeds, braking time etc.
 - It would prove even more disastrous if someone were to be able to publish false data to such topics and these data are used by end system to function.
+
+
+#### Our Implementation:
+
+Our general idea is to implement the following:
+
+1. Enforce Authentication between clients and brokers.
+2. Encrypt the authentication messages, such that credentials are not leaked over the a simple network packet scan.
+3. Use asymmetric keys to encrypt the data between clients and broker so as to enforce data integrity. 
+
+**Encryption of Authentication Message**
+
+- We encrypt all the authentication messages between all clients and broker.
+- We use the `Speck80 Block Cipher` to encrypt all the messages.
+- `Speck80` has been used as it is a lightweight block cipher that can be handled by most IoT devices while also providing substantial security measures.
+- The assumption we make: That the `broker` and `client` and already aware of the key used for encryption and decryption.
