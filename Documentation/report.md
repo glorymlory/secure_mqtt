@@ -298,9 +298,197 @@ Our general idea is to implement the following:
 2. Encrypt the authentication messages, such that credentials are not leaked over the a simple network packet scan.
 3. Use asymmetric keys to encrypt the data between clients and broker so as to enforce data integrity. 
 
-**Encryption of Authentication Message**
+**Initial Broker Use and Implementation**
+
+- For this implementation, we have used the Moquette Broker.
+- Moquette is a open source lightweight java implementation of the MQTT broker.
+- Moquette supports the following features, similar to Mosquitto, for enhancing security.
+    
+    1. Authentication using passwords.
+    Passwords are saved in the `conf/moquette.conf`, and the passwords can be hashed using `SHA512`
+    ```
+    username:sha512(yourpassword)
+    testuser:0d6be69b264717f2dd33652e212b173104b4a647b7c11ae72e9885f11cd312fb
+    echo -n "yourpassword" | sha256sum
+    ```
+
+    2. User specific Access Control List and pattern ACL
+
+    3. SSL/ TLS
+
+- More information, documentation and source code of Moquette can be found at `https://moquette-io.github.io/moquette/`    
+
+**Encryption of Authentication Message and payloads**
 
 - We encrypt all the authentication messages between all clients and broker.
 - We use the `Speck80 Block Cipher` to encrypt all the messages.
 - `Speck80` has been used as it is a lightweight block cipher that can be handled by most IoT devices while also providing substantial security measures.
 - The assumption we make: That the `broker` and `client` and already aware of the key used for encryption and decryption.
+
+*Function to encrypt message using Speck80 on publisher side:*
+```
+ private static String encryptStr(String content) {
+        byte[] key1 =Hex.toByteArray("502e50ca60fa6c7c");
+        byte[] plaintext1 = content.getBytes();
+        System.out.println("\n PLAINTEXT BYTES : " +  Arrays.toString(plaintext1));
+        Encrypt s1= new Encrypt(key1, plaintext1);
+        s1.setKey(key1);
+        s1.key_schedule();
+        s1.encrypt(plaintext1);
+        String encryptedPayload = Hex.toString(plaintext1);
+        System.out.println("ENCRYPTED: " + encryptedPayload); // printing the ciphertext  output
+        return encryptedPayload;
+    }
+```    
+
+*Function to decrypt message using Speck80 :*
+
+```
+// Decrypt the Message:
+private String decryptMsgWithSymmetricKey(String payload) {
+        byte[] key = Hex.toByteArray("502e50ca60fa6c7c");
+        byte[] passwordInPlaintextBytes = Hex.toByteArray(payload);
+
+        Decrypt s = new Decrypt(key, passwordInPlaintextBytes);
+        s.setKey(key);
+        s.key_schedule1();
+        s.decrypt(passwordInPlaintextBytes);
+        LOG.info("\n MESSAGE DECRYPTED : " + new String(passwordInPlaintextBytes));
+        final String passwordInPlaintext = new String(passwordInPlaintextBytes);
+
+        return passwordInPlaintext;
+    }
+```
+
+
+*Decrypting login credentials on broker side for authentication*
+
+```
+//    Password:
+                String decryptedPayload = decryptMsgWithSymmetricKey(DebugUtils.payload2Str(Unpooled.wrappedBuffer(msg.payload().passwordInBytes())));
+                pwd = decryptedPayload.getBytes(StandardCharsets.UTF_8);
+//                END
+
+//    Username:
+            final String loginPayload = DebugUtils.payload2Str(Unpooled.wrappedBuffer(msg.payload().userName().getBytes(StandardCharsets.UTF_8)));
+            final String login = decryptMsgWithSymmetricKey(loginPayload);
+            //     END
+```
+
+**Ensuring Data Integrity using Asymmetric Key cryptography**
+
+
+- Our aim is to make sure that the subscriber receiving data from broker is sure of the identity of broker, and that no data has been tampered with or become erratic.
+- That is, we enforce data integrity between the broker and the subscriber only.
+- We use the RSA algorithm to generate a `private key` and `public key` of `1024` bits.
+- We assume that the keys are pre-shared, and that key management has been done already.
+
+*On Broker Side:*
+
+- The broker generates a  `private key` for itself, and a `public key` that is distributed to the clients.
+- A hash of the message is generated, and is appended to the message payload.
+- This message is then encrypted using `RSA` and the `private key` of the broker.
+- This encrypted message is again encrypted using the `Speck80` algorithm mentioned above.
+
+*On Subscriber Side*
+
+- The subscriber first decrypts the message using the `Speck80` algorithm.
+- resulting payload is further decrypted using the `public key` of the broker.
+- The new message is split, the original message and hash of message are separated.
+- A new hash of the message is generated, and compared with the received hash to ensure integrity of data.
+
+*Function to check data integrity on the subscriber side:*
+
+```
+ private void checkMsgIntegrityAndDecrypt(String msg) {
+        try {
+            AsymmetricCryptography ac = new AsymmetricCryptography();
+            Path path = Paths.get("KeyPair/publicKey");
+            System.out.println("\nPATH TP FILE: \n" + path.toAbsolutePath());
+            PublicKey publicKey = ac.getPublic(path.toAbsolutePath().toString());
+
+            //decrypt payload
+            String decrypted_msg = ac.decryptText(msg, publicKey);
+            //divide the decrypt message
+            String[] parts = decrypted_msg.split("\\.", 2);
+            String part1 = parts[0]; // 004-
+            String part2 = parts[1]; // 034556
+
+            //hash new payload to compare:
+            int hash = part2.hashCode();
+            String hash_msg = String.valueOf(hash);
+            int new_hash = part2.hashCode();
+            String new_hash_msg = String.valueOf(new_hash);
+
+            // print results
+            System.out.println("Original Message: " + msg + "\nHashed Message: " + hash_msg +
+                    "\n Entire Payload: " + msg +
+                    "\nEncrypted Message: " + part2
+                    + "\nDecrypted Message: " + decrypted_msg
+                    + "\nString part 1 " + part1
+                    + "\nString part 2 " + part2
+                    + "\nNew hash " + new_hash_msg
+            );
+
+//            HERE WE CAN COMPARE THE HASHES AND GIVE APPROPRIATE RESPONSE ON INTEGRITY VIOLATION
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+```
+
+**Implementation Screenshots**
+
+1. Given below is a `publish message` from a `Publisher`. 
+![Published Message:](/images/publish_msg.jpg) 
+
+2. Given below are the `subscribed messages` on a `Subscriber`.
+![Published Message:](/images/subscriber.jpg)
+
+3. Given below is the `broker` implementation.
+![Published Message:](/images/broker.jpg) 
+
+
+**Running the project**
+
+The project can be found on the github repository: `git@github.com:glorymlory/secure_mqtt.git`
+
+- The broker implementation can be found on the branch `master`.
+- The client implementation can be found on the branch `clients`.
+
+*Run the broker*
+
+Do the following steps:
+
+```
+git clone -b master git@github.com:glorymlory/secure_mqtt.git
+
+cd securemqtt/
+
+mvn clean package 
+
+cd distribution/target
+
+tar xzf distribution-0.16-SNAPSHOT-bundle.tar.gz
+
+ ./moquette.sh
+
+```
+
+
+*Run the client*
+
+Do the following steps:
+
+```
+git clone -b clients git@github.com:glorymlory/secure_mqtt.git
+
+cd securemqtt/
+
+mvn clean package 
+
+mvn exec:java -Dexec.mainClass="MqttSubscriber"
+
+mvn exec:java -Dexec.mainClass="MqttPublisher"
+```
