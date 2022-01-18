@@ -105,12 +105,43 @@ Usage: mosquitto_sub {[-h host] [--unix path] [-p port] [-u username] [-P passwo
 ```
 #### 1.3 Set up 2 MQTT Subscribers and 2 MQTT Publishers and exchange some messages via MQTT (should contain your group name as topic or payload])
 
+- Two publishers and subscribers we deployed.
+- Messages were published on the topic: seclab
+
+![Published Message:](/images/mosquitto_pub.png) 
+
+![Published Message:](/images/mosquitto_sub.png) 
+
 
 
 
 #### 1.4 Use wireshark to inspect the sent packages and explain how the protocol works.
+
+![Published Message:](/images/wireshark1.png) 
+
+- At first a server or send a connect command to a broker or publisher and  receive an ACK packet from it. Then  the broker will publish messages to subscribers. And at the end a disconnect message is sent.  This circle happens in each publication. 
+
+
+![Published Message:](/images/wireshark2.png)
+
+- Messages sent with subscribers are as follows . A connect command and connect ACK, then a subscribe req and subscribe ACK to be accepted for receiving messages. 
+
+
+![Published Message:](/images/wireshark3.png) 
+
+- And each 60 seconds a ping packet from subscribers to check the connectivity 
+
+![Published Message:](/images/wireshark4.png) 
+
+
+
+
+
 #### 1.5 Can you spot any vulnerabilities? If so, which security goals are violated?
 
+- The confidentiality of messages are violated, since  unencrypted messages being sent throughout the network. 
+- And also without any authentication there is no access control for subscribers.
+- There is no mechanism for ensuring integrity of data, and no client or subscriber is aware if data is indeed correctly received.
 
 
 #### Exercise 2: Securing MQTT with TLS
@@ -187,11 +218,24 @@ Publish
 
 `mosquitto_pub -h 192.168.178.52 -t "test" -m "message" -p 1883 -d --cert client.crt --key client.key --cafile ca.crt`
 
+![Published Message:](/images/tls2.png) 
+
 Subscribe:
 
 `mosquitto_sub --cafile ca.crt -h 192.168.178.52 -t "#" -p 1883 -d --cert client.crt --key client.key`
 
+![Published Message:](/images/tls1.png) 
+
+
 **Wireshark Inspection:**
+
+![Published Message:](/images/wireshark5.png) 
+
+![Published Message:](/images/wireshark6.png) 
+
+![Published Message:](/images/wireshark7.png) 
+ 
+
 
 
     
@@ -266,9 +310,7 @@ The two clients `subscribing` are:
 
 #### 3.3 Assume that an attacker has access to the network and is able to connect to the MQTT Broker via port 1883 (no authentication). Is this a security issue? If so, what are the possible attacks that the attacker could execute?
 
-The attacker could subscribe to any topics.
-The attacker could find out what topics are present, and can publish false data to the same.
-(describe more)
+If a malicious entity is able to connect to the port 1883 without any authentication, then, then the attacker could find out what topics are present, and can publish false data to the same. This violates data confidentiality, data integrity and data origin authentication. It will also be possible for the malicious entity to overload the broker by creating establishing multiple connections than the broker can handle.
 
 #### Exercise 4: Improving the Security of MQTT once again
 **Try to come up with a solution to fix the existing security issues when using multiple listeners on the MQTT Broker. What you gonna do is completely up to you! Be creative and implement your solution!**
@@ -318,12 +360,14 @@ Our general idea is to implement the following:
 
 - More information, documentation and source code of Moquette can be found at `https://moquette-io.github.io/moquette/`    
 
-**Encryption of Authentication Message and payloads**
+**Encryption of Authentication Message and payloads - Confidentiality**
 
-- We encrypt all the authentication messages between all clients and broker.
+- We encrypt all the `authentication` messages as well as `publish` messages between all clients and broker.
+- Encrypting the `authentication` messages ensures thats no malicious entity that is on the network monitoring packets can decipher the login credentials.
+- As such, we ensure that no client that is not authorized will be not be able to connect for to acquire the credentials.
 - We use the `Speck80 Block Cipher` to encrypt all the messages.
-- `Speck80` has been used as it is a lightweight block cipher that can be handled by most IoT devices while also providing substantial security measures.
-- The assumption we make: That the `broker` and `client` and already aware of the key used for encryption and decryption.
+- `Speck80` has been used as it is a lightweight block cipher that can be handled by most IoT devices while also providing substantial security measures. `Speck` has been developed by the NSA and has been greatly optimized for software implementations.
+- The assumption we make: That the `broker` and `client` and already aware of the key used for encryption and decryption. We assume that certain key management mechanisms are already in place.
 
 *Function to encrypt message using Speck80 on publisher side:*
 ```
@@ -340,7 +384,7 @@ Our general idea is to implement the following:
         return encryptedPayload;
     }
 ```    
-
+The key `502e50ca60fa6c7c` used here to encrypt and decrypt data is in the `hex` representation.
 *Function to decrypt message using Speck80 :*
 
 ```
@@ -386,6 +430,7 @@ private String decryptMsgWithSymmetricKey(String payload) {
 *On Broker Side:*
 
 - The broker generates a  `private key` for itself, and a `public key` that is distributed to the clients.
+- The function `GenerateKeys` generated the key pairs and stores the keys in a folder. The appropriate keys are distributed to the clients. Some method of good key management is again an assumption made.
 - A hash of the message is generated, and is appended to the message payload.
 - This message is then encrypted using `RSA` and the `private key` of the broker.
 - This encrypted message is again encrypted using the `Speck80` algorithm mentioned above.
@@ -395,7 +440,7 @@ private String decryptMsgWithSymmetricKey(String payload) {
 - The subscriber first decrypts the message using the `Speck80` algorithm.
 - resulting payload is further decrypted using the `public key` of the broker.
 - The new message is split, the original message and hash of message are separated.
-- A new hash of the message is generated, and compared with the received hash to ensure integrity of data.
+- A new hash of the message is generated, and compared with the received hash to ensure integrity of data. If the new hash of data matches with the hash received, then we are certain that the data has been received from the correct broker.
 
 *Function to check data integrity on the subscriber side:*
 
