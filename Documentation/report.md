@@ -435,6 +435,37 @@ private String decryptMsgWithSymmetricKey(String payload) {
 - This message is then encrypted using `RSA` and the `private key` of the broker.
 - This encrypted message is again encrypted using the `Speck80` algorithm mentioned above.
 
+*Function to hash data and encrypt payload and hash with private key on Publisher side*
+
+```
+private String hashAndSignPayload(String payload) {
+        try {
+            AsymmetricCryptography ac = new AsymmetricCryptography();
+            Path path = Paths.get("privateKey");
+            LOG.info("\nPATH TP FILE: \n" + path.toAbsolutePath());
+
+            PrivateKey privateKey = ac.getPrivate(path.toAbsolutePath().toString());
+            //hash message:
+            String msg = new String(payload);
+            int hash = msg.hashCode();
+            String hash_msg = String.valueOf(hash);
+            LOG.info("\nHASHED PAYLOAD: \n" + hash_msg);
+            String new_payload = hash_msg + "." + msg;
+            LOG.info("\nFULL PAYLOAD: \n" + new_payload);
+            //encrypt hashed message:
+            String encrypted_msg = ac.encryptText(new_payload, privateKey);
+            LOG.info("\nENCRYPTED PAYLOAD: \n" + encrypted_msg);
+            return encrypted_msg;
+        } catch (NoSuchPaddingException | NoSuchAlgorithmException e) {
+            LOG.error("Asymmetric encryption exception thrown", e);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+```
+
 *On Subscriber Side*
 
 - The subscriber first decrypts the message using the `Speck80` algorithm.
